@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=380">
+  <title>ReplyIQ Settings</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 380px;
+      font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+      background: #fafbfc;
+      color: #1a1a1a;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #4285f4, #6c5ce7);
+      padding: 20px 24px;
+      color: #fff;
+    }
+
+    .header h1 {
+      font-size: 20px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header p {
+      font-size: 13px;
+      opacity: 0.85;
+      margin-top: 4px;
+    }
+
+    .body {
+      padding: 20px 24px;
+    }
+
+    .section {
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #666;
+      margin-bottom: 8px;
+    }
+
+    .input-group {
+      position: relative;
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #dde1e6;
+      border-radius: 10px;
+      font-size: 14px;
+      background: #fff;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+
+    .input-group input:focus {
+      border-color: #4285f4;
+      box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.12);
+    }
+
+    .input-group input::placeholder {
+      color: #aaa;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: #888;
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+
+    .hint a {
+      color: #4285f4;
+      text-decoration: none;
+    }
+
+    .hint a:hover {
+      text-decoration: underline;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 11px;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #4285f4, #6c5ce7);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 2px 8px rgba(66, 133, 244, 0.35);
+    }
+
+    .btn-secondary {
+      background: #f0f4ff;
+      color: #4285f4;
+      margin-top: 8px;
+    }
+
+    .btn-secondary:hover {
+      background: #e0e8ff;
+    }
+
+    .status-card {
+      background: #fff;
+      border: 1px solid #e8eaed;
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .status-card .left {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .status-card .plan {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .status-card .detail {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .badge-free {
+      background: #e8f0fe;
+      color: #1967d2;
+    }
+
+    .badge-pro {
+      background: #e6f4ea;
+      color: #137333;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1a1a1a;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+
+    .divider {
+      height: 1px;
+      background: #e8eaed;
+      margin: 16px 0;
+    }
+
+    .footer {
+      text-align: center;
+      padding: 12px 24px 16px;
+      font-size: 12px;
+      color: #999;
+    }
+
+    .footer a {
+      color: #4285f4;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+        <path d="M2 17l10 5 10-5"/>
+        <path d="M2 12l10 5 10-5"/>
+      </svg>
+      ReplyIQ
+    </h1>
+    <p>AI-powered email replies for Gmail</p>
+  </div>
+
+  <div class="body">
+    <!-- API Key -->
+    <div class="section">
+      <div class="section-title">Gemini API Key</div>
+      <div class="input-group">
+        <input type="password" id="apiKey" placeholder="AIzaSy..." autocomplete="off" spellcheck="false">
+      </div>
+      <div class="hint">
+        Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="saveBtn">Save Settings</button>
+
+    <div class="divider"></div>
+
+    <!-- Usage -->
+    <div class="section">
+      <div class="section-title">Subscription</div>
+      <div class="status-card">
+        <div class="left">
+          <span class="plan" id="planName">Free Plan</span>
+          <span class="detail" id="planDetail">Loading…</span>
+        </div>
+        <span class="badge badge-free" id="planBadge">FREE</span>
+      </div>
+    </div>
+
+    <button class="btn btn-secondary" id="upgradeBtn">Upgrade to Pro — $9/mo</button>
+  </div>
+
+  <div class="footer">
+    ReplyIQ v1.0 · <a href="https://github.com/dgiannico24/replyiq" target="_blank">GitHub</a>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
