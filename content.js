@@ -6,29 +6,25 @@
 (() => {
   'use strict';
 
-  // ── Constants ──────────────────────────────────────────────────
-  const BUTTON_ID_PREFIX = 'replyiq-btn-';
-  const POLL_INTERVAL = 1500; // ms between DOM scans
+  const POLL_INTERVAL = 1500;
   let buttonCounter = 0;
 
   // ── Tone options ───────────────────────────────────────────────
   const TONES = [
-    { id: 'professional', label: '💼 Professional', desc: 'Polished & formal' },
-    { id: 'casual', label: '😊 Casual', desc: 'Friendly & warm' },
-    { id: 'direct', label: '⚡ Direct', desc: 'Concise & to the point' }
+    { id: 'professional', label: '\u{1F4BC} Professional', desc: 'Polished & formal' },
+    { id: 'casual', label: '\u{1F60A} Casual', desc: 'Friendly & warm' },
+    { id: 'direct', label: '\u26A1 Direct', desc: 'Concise & to the point' }
   ];
 
   // ── DOM Helpers ────────────────────────────────────────────────
 
   function createReplyIQButton(composeEl) {
-    const id = BUTTON_ID_PREFIX + (++buttonCounter);
+    const id = 'replyiq-btn-' + (++buttonCounter);
 
-    // Wrapper
     const wrapper = document.createElement('div');
     wrapper.id = id;
     wrapper.className = 'replyiq-wrapper';
 
-    // Main button
     const btn = document.createElement('button');
     btn.className = 'replyiq-btn';
     btn.title = 'Generate AI reply with ReplyIQ';
@@ -41,7 +37,6 @@
       <span class="replyiq-label">AI Reply</span>
     `;
 
-    // Tone dropdown
     const dropdown = document.createElement('div');
     dropdown.className = 'replyiq-dropdown';
     dropdown.style.display = 'none';
@@ -65,7 +60,6 @@
       dropdown.style.display = dropdown.style.display === 'none' ? 'flex' : 'none';
     });
 
-    // Close dropdown on outside click
     document.addEventListener('click', (e) => {
       if (!wrapper.contains(e.target)) {
         dropdown.style.display = 'none';
@@ -82,43 +76,32 @@
   function extractThreadEmails() {
     const emails = [];
 
-    // Gmail renders each message in the thread as a container with role or class patterns.
-    // Strategy: look for expanded message containers
-    const messageContainers = document.querySelectorAll(
-      'div[data-message-id], div.adn.ads, div[class*="gs"]'
-    );
-
-    // Fallback: grab all visible message bodies
+    // Gmail message bodies use class "a3s" (with optional "aiL")
     const messageBodies = document.querySelectorAll('div.a3s.aiL, div.a3s');
 
     if (messageBodies.length > 0) {
-      // Try to get sender + date from sibling/parent elements
-      messageBodies.forEach((body, idx) => {
-        const messageRoot = body.closest('div[data-message-id]') || body.closest('.gs') || body.parentElement;
+      messageBodies.forEach((body) => {
+        const messageRoot = body.closest('[data-message-id]') || body.closest('.gs') || body.parentElement?.parentElement?.parentElement;
 
-        // Extract sender
         let from = 'Unknown';
-        const senderEl = messageRoot?.querySelector('span.gD, span[email], h3.iw span[email]');
+        const senderEl = messageRoot?.querySelector('span[email], span.gD');
         if (senderEl) {
-          from = senderEl.getAttribute('email') || senderEl.getAttribute('name') || senderEl.textContent?.trim() || 'Unknown';
+          from = senderEl.getAttribute('email') || senderEl.textContent?.trim() || 'Unknown';
         }
 
-        // Extract date
         let date = '';
-        const dateEl = messageRoot?.querySelector('span.g3, span[title]');
+        const dateEl = messageRoot?.querySelector('span[title]');
         if (dateEl) {
           date = dateEl.getAttribute('title') || dateEl.textContent?.trim() || '';
         }
 
-        // Extract body text
         const bodyText = body.innerText?.trim() || '';
         if (bodyText.length > 0) {
-          emails.push({ from, date, body: bodyText.substring(0, 3000) }); // Cap per email
+          emails.push({ from, date, body: bodyText.substring(0, 3000) });
         }
       });
     }
 
-    // Return last 3 emails (most recent context)
     return emails.slice(-3);
   }
 
@@ -127,17 +110,15 @@
   async function handleGenerate(composeEl, tone, btn) {
     const originalHTML = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `<span class="replyiq-spinner"></span><span class="replyiq-label">Generating…</span>`;
+    btn.innerHTML = `<span class="replyiq-spinner"></span><span class="replyiq-label">Generating\u2026</span>`;
 
     try {
-      // Extract thread
       const threadEmails = extractThreadEmails();
       if (threadEmails.length === 0) {
         showNotification(composeEl, 'Could not find any emails in this thread. Try opening the conversation first.', 'error');
         return;
       }
 
-      // Send to background
       const response = await chrome.runtime.sendMessage({
         type: 'GENERATE_REPLY',
         threadEmails,
@@ -149,20 +130,18 @@
         return;
       }
       if (response.error === 'no_api_key') {
-        showNotification(composeEl, 'Please set your Gemini API key — click the ReplyIQ icon in the toolbar.', 'warning');
+        showNotification(composeEl, 'Please set your Gemini API key \u2014 click the ReplyIQ icon in the toolbar.', 'warning');
         return;
       }
       if (response.error) {
-        showNotification(composeEl, `Error: ${response.message}`, 'error');
+        showNotification(composeEl, 'Error: ' + response.message, 'error');
         return;
       }
 
-      // Inject reply into compose body
       injectReply(composeEl, response.reply);
 
-      // Show remaining
       if (!response.isPaid && response.remaining !== Infinity) {
-        showNotification(composeEl, `Reply generated! ${response.remaining} free replies left this month.`, 'success');
+        showNotification(composeEl, 'Reply generated! ' + response.remaining + ' free replies left this month.', 'success');
       }
 
     } catch (e) {
@@ -175,19 +154,24 @@
   }
 
   function injectReply(composeEl, replyText) {
-    // Gmail compose body is a contenteditable div with role="textbox" or class "Am"
-    const composeBody = composeEl.querySelector(
-      'div[role="textbox"][aria-label*="Body"], div[role="textbox"][g_editable="true"], div.Am.Al.editable, div[contenteditable="true"].editable, div[aria-label*="Message Body"]'
-    );
+    // Primary: aria-label based (most stable across Gmail updates)
+    let composeBody = composeEl.querySelector('div[aria-label="Message Body"][contenteditable="true"]');
+
+    // Fallback 1: g_editable attribute
+    if (!composeBody) {
+      composeBody = composeEl.querySelector('div[g_editable="true"]');
+    }
+    // Fallback 2: class-based
+    if (!composeBody) {
+      composeBody = composeEl.querySelector('div.Am.Al.editable');
+    }
+    // Fallback 3: role + contenteditable
+    if (!composeBody) {
+      composeBody = composeEl.querySelector('div[role="textbox"][contenteditable="true"]');
+    }
 
     if (!composeBody) {
-      // Broader fallback
-      const fallback = composeEl.querySelector('div[contenteditable="true"]');
-      if (fallback) {
-        insertTextIntoEditable(fallback, replyText);
-        return;
-      }
-      showNotification(composeEl, 'Could not find the compose area. Please paste manually.', 'warning');
+      showNotification(composeEl, 'Could not find the compose area. Reply copied to clipboard.', 'warning');
       navigator.clipboard.writeText(replyText).catch(() => {});
       return;
     }
@@ -196,37 +180,39 @@
   }
 
   function insertTextIntoEditable(el, text) {
-    // Convert plain text to HTML (preserve line breaks)
     const html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
 
-    // Insert at the beginning of the compose body (before quoted text)
     const existingContent = el.innerHTML;
     const quoteMarker = existingContent.indexOf('<div class="gmail_quote');
     if (quoteMarker > -1) {
-      el.innerHTML = `<div>${html}</div><br>` + existingContent.substring(quoteMarker);
+      el.innerHTML = '<div>' + html + '</div><br>' + existingContent.substring(quoteMarker);
     } else {
-      el.innerHTML = `<div>${html}</div><br>` + existingContent;
+      el.innerHTML = '<div>' + html + '</div><br>' + existingContent;
     }
 
-    // Trigger input event so Gmail registers the change
     el.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
   // ── Notifications ──────────────────────────────────────────────
 
-  function showNotification(composeEl, message, type = 'info') {
-    // Remove any existing notification
+  function showNotification(composeEl, message, type) {
+    type = type || 'info';
     const existing = composeEl.querySelector('.replyiq-notification');
     if (existing) existing.remove();
 
     const notif = document.createElement('div');
-    notif.className = `replyiq-notification replyiq-notification--${type}`;
+    notif.className = 'replyiq-notification replyiq-notification--' + type;
     notif.textContent = message;
 
-    const toolbar = composeEl.querySelector('.btC, .bAK, .aDh') || composeEl;
-    toolbar.parentElement?.insertBefore(notif, toolbar.nextSibling);
+    // Insert notification near the toolbar
+    const toolbar = composeEl.querySelector('.btC') || composeEl.querySelector('[aria-label*="Send"]')?.parentElement || composeEl;
+    if (toolbar.parentElement) {
+      toolbar.parentElement.insertBefore(notif, toolbar.nextSibling);
+    } else {
+      composeEl.appendChild(notif);
+    }
 
-    setTimeout(() => notif.remove(), 6000);
+    setTimeout(function() { notif.remove(); }, 6000);
   }
 
   function showUpgradePrompt(composeEl) {
@@ -235,79 +221,135 @@
 
     const notif = document.createElement('div');
     notif.className = 'replyiq-notification replyiq-notification--upgrade';
-    notif.innerHTML = `
-      <span>You've used all 10 free replies this month.</span>
-      <button class="replyiq-upgrade-btn" id="replyiq-upgrade-cta">Upgrade to Pro — $9/mo</button>
-    `;
+    notif.innerHTML = '<span>You\'ve used all 10 free replies this month.</span><button class="replyiq-upgrade-btn" id="replyiq-upgrade-cta">Upgrade to Pro \u2014 $9/mo</button>';
 
-    const toolbar = composeEl.querySelector('.btC, .bAK, .aDh') || composeEl;
-    toolbar.parentElement?.insertBefore(notif, toolbar.nextSibling);
+    const toolbar = composeEl.querySelector('.btC') || composeEl.querySelector('[aria-label*="Send"]')?.parentElement || composeEl;
+    if (toolbar.parentElement) {
+      toolbar.parentElement.insertBefore(notif, toolbar.nextSibling);
+    } else {
+      composeEl.appendChild(notif);
+    }
 
-    notif.querySelector('#replyiq-upgrade-cta').addEventListener('click', () => {
+    notif.querySelector('#replyiq-upgrade-cta').addEventListener('click', function() {
       chrome.runtime.sendMessage({ type: 'OPEN_PAYMENT' });
     });
 
-    setTimeout(() => notif.remove(), 15000);
+    setTimeout(function() { notif.remove(); }, 15000);
   }
 
-  // ── Compose Window Observer ────────────────────────────────────
+  // ── Compose Window Detection & Button Injection ────────────────
+
+  function findSendButtons() {
+    // Strategy 1: aria-label contains "Send" (most reliable)
+    const byAria = document.querySelectorAll('div[role="button"][aria-label*="Send"]');
+    const results = [];
+
+    byAria.forEach(function(el) {
+      const label = el.getAttribute('aria-label') || '';
+      // Match "Send (Ctrl-Enter)" but not "Send + Schedule" or "More send options"
+      if (label.match(/^Send\s/i) || label === 'Send') {
+        results.push(el);
+      }
+    });
+
+    // Strategy 2: data-tooltip contains "Send"
+    if (results.length === 0) {
+      const byTooltip = document.querySelectorAll('div[role="button"][data-tooltip*="Send"]');
+      byTooltip.forEach(function(el) {
+        const tip = el.getAttribute('data-tooltip') || '';
+        if (tip.match(/^Send\s/i) || tip === 'Send') {
+          results.push(el);
+        }
+      });
+    }
+
+    // Strategy 3: class-based (aoO is Gmail's Send button class)
+    if (results.length === 0) {
+      document.querySelectorAll('div.T-I.J-J5-Ji.aoO').forEach(function(el) {
+        results.push(el);
+      });
+    }
+
+    return results;
+  }
+
+  function getComposeContainer(sendBtn) {
+    // Walk up to find the compose window container
+    // Try known compose container classes first
+    let container = sendBtn.closest('.M9')        // compose modal shell
+                 || sendBtn.closest('.AD')         // compose form
+                 || sendBtn.closest('.dw')         // outermost compose container
+                 || sendBtn.closest('.nH.Hd')      // compose window frame
+                 || sendBtn.closest('div[role="dialog"]');
+
+    // Fallback: walk up to find a container that has a contenteditable area
+    if (!container) {
+      let el = sendBtn.parentElement;
+      for (let i = 0; i < 15 && el; i++) {
+        if (el.querySelector('div[aria-label="Message Body"], div[g_editable="true"], div.Am.Al.editable')) {
+          container = el;
+          break;
+        }
+        el = el.parentElement;
+      }
+    }
+
+    return container;
+  }
 
   function injectButtons() {
-    // Gmail compose toolbars: the send button area has class "btC" or the toolbar row "aDh"
-    // We look for compose windows that don't already have our button
-    const composeWindows = document.querySelectorAll(
-      'div.M9, div.AD, div[role="dialog"] .a3s, div.nH .iN, div.nH .AD, table.IZ'
-    );
+    const sendBtns = findSendButtons();
 
-    // More reliable: find all Send button containers
-    const sendBtns = document.querySelectorAll('div[role="button"][data-tooltip*="Send"], div.T-I.J-J5-Ji[data-tooltip*="Send"]');
-
-    sendBtns.forEach(sendBtn => {
-      const composeEl = sendBtn.closest('div.M9, div.AD, div[role="dialog"], div.nH .iN, table.iS') ||
-                        sendBtn.closest('tr')?.closest('div[class]') ||
-                        sendBtn.closest('div');
-
+    sendBtns.forEach(function(sendBtn) {
+      const composeEl = getComposeContainer(sendBtn);
       if (!composeEl) return;
       if (composeEl.querySelector('.replyiq-wrapper')) return; // Already injected
 
-      // Find the toolbar row (parent of send button)
-      const toolbar = sendBtn.closest('.btC') || sendBtn.closest('tr') || sendBtn.parentElement;
+      // Find the toolbar row: parent with class "btC" or direct parent of Send button
+      const toolbar = sendBtn.closest('.btC') || sendBtn.parentElement;
       if (!toolbar) return;
 
       const button = createReplyIQButton(composeEl);
 
-      // Insert after the send button area
-      toolbar.style.display = 'flex';
-      toolbar.style.alignItems = 'center';
+      // Make sure toolbar is flex so our button sits inline
+      const computedDisplay = window.getComputedStyle(toolbar).display;
+      if (computedDisplay !== 'flex' && computedDisplay !== 'inline-flex') {
+        toolbar.style.display = 'flex';
+        toolbar.style.alignItems = 'center';
+      }
+
       toolbar.appendChild(button);
+
+      console.log('ReplyIQ: button injected into compose window');
     });
   }
 
   // ── Initialize ─────────────────────────────────────────────────
 
-  // Poll for new compose windows (Gmail is a SPA with dynamic DOM)
+  // Poll for new compose windows
   setInterval(injectButtons, POLL_INTERVAL);
 
-  // Also observe DOM mutations for faster detection
-  const observer = new MutationObserver((mutations) => {
+  // MutationObserver for faster detection
+  let debounceTimer = null;
+  const observer = new MutationObserver(function(mutations) {
     let shouldCheck = false;
-    for (const mutation of mutations) {
-      if (mutation.addedNodes.length > 0) {
+    for (let i = 0; i < mutations.length; i++) {
+      if (mutations[i].addedNodes.length > 0) {
         shouldCheck = true;
         break;
       }
     }
     if (shouldCheck) {
-      // Small debounce
-      clearTimeout(observer._debounce);
-      observer._debounce = setTimeout(injectButtons, 300);
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(injectButtons, 300);
     }
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
 
-  // Initial scan
+  // Initial scan after Gmail finishes loading
   setTimeout(injectButtons, 2000);
+  setTimeout(injectButtons, 4000); // Second pass in case Gmail was slow
 
   console.log('ReplyIQ content script loaded.');
 })();
